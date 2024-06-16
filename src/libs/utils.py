@@ -13,6 +13,10 @@ def donload_hf_model(REPO_ID,save_location):
                     local_dir=save_location,
                     token=hf_token)
     
-    
+    return save_location
+    ## you can also use hf cli 
+    ## huggingface-cli download meta-llama/Meta-Llama-3-8B --include "original/*" --local-dir meta-llama/Meta-Llama-3-8B
+
+
     
 #%%
