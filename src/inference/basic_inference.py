@@ -1,5 +1,10 @@
 #%%
 ### test file 
+"""
+example of LLAMA 3 chatbot with gradio available 
+https://github.com/johnsonice/HuggingFace_Demos/blob/main/examples/Gradio_Inference/Example_LLAMA3_8B.py
+"""
+
 
 import transformers
 import torch
