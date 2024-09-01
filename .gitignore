@@ -1,3 +1,5 @@
+/src/inference/unit_test/netmind_api_example.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
