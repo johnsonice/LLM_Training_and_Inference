@@ -169,7 +169,7 @@ class BSAgent:
 
     def get_completion(
         self,
-        prompt_template: Dict[str, str],
+        prompt_template: Union[Dict[str, str], List[Dict[str, str]]],
         model: Optional[str] = None,
         temperature: Optional[float] = None,
         conv_history: List[Dict[str, str]] = None,
@@ -182,7 +182,8 @@ class BSAgent:
         Get a completion from the API.
         
         Args:
-            prompt_template: Dictionary containing 'System' and/or 'Human' prompts
+            prompt_input: Either a dictionary containing 'System' and/or 'Human' prompts,
+                or a list of OpenAI message format dicts
             model: Optional model override
             temperature: Optional temperature override
             conv_history: Optional conversation history
@@ -199,15 +200,20 @@ class BSAgent:
         conv_history = list(conv_history or [])
 
         messages = []
-        if "System" in prompt_template or "system" in prompt_template:
-            system_content = prompt_template.get("System") or prompt_template.get("system")
-            messages.append({"role": "system", "content": system_content})
-        if "Human" in prompt_template or "user" in prompt_template:
-            user_content = prompt_template.get("Human") or prompt_template.get("user")
-            messages.append({"role": "user", "content": user_content})
-            
-        if not messages:
-            raise ValueError("Prompt template must contain either 'System'/'system' or 'user'/'Human' message.")
+        if isinstance(prompt_template, dict):
+            # Handle prompt template format
+            if "System" in prompt_template or "system" in prompt_template:
+                system_content = prompt_template.get("System") or prompt_template.get("system")
+                messages.append({"role": "system", "content": system_content})
+            if "Human" in prompt_template or "user" in prompt_template:
+                user_content = prompt_template.get("Human") or prompt_template.get("user")
+                messages.append({"role": "user", "content": user_content})
+                
+            if not messages:
+                raise ValueError("Prompt template must contain either 'System'/'system' or 'user'/'Human' message.")
+        else:
+            # Handle direct OpenAI message format
+            messages = prompt_template
 
         conv_history.extend(messages)
         response = self._get_api_response(
@@ -230,7 +236,7 @@ class BSAgent:
     def get_response_content(self, **kwargs) -> str:
         """Get just the content from a completion response."""
         response = self.get_completion(**kwargs)
-        if kwargs.get("response_format"):
+        if kwargs.get("response_format") or self.response_format:
             return response.choices[0].message.parsed
         else:
             return response.choices[0].message.content
