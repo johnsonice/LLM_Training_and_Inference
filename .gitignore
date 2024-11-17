@@ -1,4 +1,6 @@
 /src/inference/unit_test/netmind_api_example.py
+**/.deepeval-cache.json
+**/.deepeval_telemtry.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
