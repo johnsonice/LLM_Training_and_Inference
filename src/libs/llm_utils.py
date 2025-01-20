@@ -77,7 +77,8 @@ def normalize_model_name(model_name: str) -> str:
         return "gpt-4o-mini"
     elif model_name.startswith("gpt-4o"):
         return "gpt-4o"
-    raise ValueError(f"Unknown model name: {model_name}")
+    else:
+        return model_name
 
 def get_oai_fees(model_name: str, prompt_tokens: int, completion_tokens: int) -> float:
     """
@@ -122,6 +123,7 @@ class BSAgent:
     def __init__(
         self,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         model: str = DEFAULT_MODEL,
         temperature: float = DEFAULT_TEMPERATURE,
         response_format: Optional[Union[str, type[BaseModel]]] = None
@@ -131,11 +133,15 @@ class BSAgent:
         
         Args:
             api_key: OpenAI API key. If None, uses environment variable
+            base_url: Base URL for API endpoint. If None, uses OpenAI default
             model: Model identifier to use
             temperature: Temperature parameter for generation
             response_format: Output format ('json' or None for text)
         """
-        self.client = OpenAI(api_key=api_key or os.environ['OPENAI_API_KEY'])
+        self.client = OpenAI(
+            api_key=api_key or os.environ['OPENAI_API_KEY'],
+            base_url=base_url
+        )
         self.model = model
         self.temperature = temperature
         self.response_format = response_format
