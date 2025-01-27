@@ -12,7 +12,9 @@ import copy
 from pathlib import Path
 from tqdm.asyncio import tqdm_asyncio
 import tqdm
-
+import nest_asyncio
+import asyncio
+nest_asyncio.apply() 
 sys.path.insert(0, '../../libs')
 from llm_utils_async import AsyncBSAgent
 from prompts import long_fewshotcot_pt_2label
@@ -27,6 +29,30 @@ class ClimateClassification_2label(BaseModel):
     justification: str
     classification: Literal["favorable", "unfavorable"]
 
+async def process_row(agent, row, prompt_template, file_name):
+    """Process a single row of data"""
+    structured_prompt = copy.deepcopy(prompt_template)
+    structured_prompt['user'] = structured_prompt['user'].format(
+        PARAGRAPH=row.body
+    )
+    try:
+        response = await agent.get_response_content(
+            prompt_template=structured_prompt, 
+            response_format=ClimateClassification_2label
+        )
+        return {
+            'paragraph': row.body,
+            'predicted_label': response.classification,
+            'justification': response.justification
+        }
+    except Exception as e:
+        print(f"Error processing row in {file_name}: {str(e)}")
+        return {
+            'paragraph': row.body,
+            'predicted_label': None,
+            'justification': f"Error: {str(e)}"
+        }
+
 async def process_file(agent, input_file: Path, output_file: Path, prompt_template, batch_size=100):
     """Process a single CSV file in batches and save results"""
     print(f"Processing {input_file}")
@@ -36,41 +62,24 @@ async def process_file(agent, input_file: Path, output_file: Path, prompt_templa
     total_rows = len(dataset)
     all_results = []
     
-    async def process_row(i):
-        structured_prompt = copy.deepcopy(prompt_template)
-        structured_prompt['user'] = structured_prompt['user'].format(
-            PARAGRAPH=dataset.iloc[i].body
-        )
-        try:
-            response = await agent.get_response_content(
-                prompt_template=structured_prompt, 
-                response_format=ClimateClassification_2label
-            )
-            return {
-                'paragraph': dataset.iloc[i].body,
-                'predicted_label': response.classification,
-                'justification': response.justification
-            }
-        except Exception as e:
-            print(f"Error processing row {i} in {input_file.name}: {str(e)}")
-            return {
-                'paragraph': dataset.iloc[i].body,
-                'predicted_label': None,
-                'justification': f"Error: {str(e)}"
-            }
-
     # Process in batches with progress bar
     with tqdm.tqdm(total=total_rows, desc=f"Processing {input_file.name}") as pbar:
         for batch_start in range(0, total_rows, batch_size):
             batch_end = min(batch_start + batch_size, total_rows)
             
             # Process current batch
-            batch_tasks = [process_row(i) for i in range(batch_start, batch_end)]
+            batch_tasks = [
+                process_row(agent, dataset.iloc[i], prompt_template, input_file.name) 
+                for i in range(batch_start, batch_end)
+            ]
             batch_results = await asyncio.gather(*batch_tasks)
             
             # Update progress and collect results
             all_results.extend(batch_results)
             pbar.update(len(batch_results))
+            
+            # Add wait period between batches to avoid overwhelming the server
+            await asyncio.sleep(1)
     
     # Convert results to DataFrame and merge with original dataset
     results_df = pd.DataFrame(all_results)
@@ -82,37 +91,51 @@ async def process_file(agent, input_file: Path, output_file: Path, prompt_templa
 #%%
 
 if __name__ == "__main__":
-    import nest_asyncio
-    import asyncio
-    nest_asyncio.apply() 
-    test_run = False
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Process climate news articles for classification')
+    parser.add_argument('--batch-size', type=int, default=128, help='Number of rows to process in parallel (default: 128)')
+    parser.add_argument('--test-run', action='store_true', help='Run on a small subset of files for testing')
+    parser.add_argument('--port', type=int, default=8800, help='Port for the vLLM server (default: 8800)')
+    args = parser.parse_args()
     
     agent = AsyncBSAgent(
         model='llama-3.1-8b-Instruct',
-        base_url='http://localhost:8000/v1',
+        base_url=f'http://localhost:{args.port}/v1',
         api_key='abc'
     )
     # Define input and output directories
-    input_dir = Path('/home/xiong/data/Fund/Climate/infer_res_2label')
-    output_dir = Path('/home/xiong/data/Fund/Climate/infer_res_2label_llama')
+    data_dir = Path('/ephemeral/home/xiong/data/Fund/Climate')
+    input_dir = data_dir / 'infer_res_2label'
+    output_dir = data_dir / 'infer_res_2label_llama'
     output_dir.mkdir(exist_ok=True)
     
-    # Get all CSV files to process
-    if test_run:
+    # Get all CSV files to process and filter out already processed ones
+    if args.test_run:
         input_files = list(input_dir.glob('*.csv'))[:2]
     else:
         input_files = list(input_dir.glob('*.csv'))
-    input_files = [f for f in input_files if not f.name.startswith('results_')]
+    input_files = [f for f in input_files if not (f.name.startswith('results_') or f.name.startswith('.'))]
+    existing_outputs = {f.name.replace('results_', '') for f in output_dir.glob('*.csv')}
+    input_files = [f for f in input_files if f.name not in existing_outputs]
     print(f"Found {len(input_files)} files to process")
-    
-    for input_file in tqdm.tqdm(input_files, desc="Processing files"):
-        output_file = output_dir / f"results_{input_file.name}"
-        asyncio.run(process_file(
-            agent, 
-            input_file, 
-            output_file, 
-            long_fewshotcot_pt_2label,
-            batch_size=1000  # Process 50 rows at a time
-        ))
+
+    async def process_all_files():
+        for input_file in tqdm.tqdm(input_files, desc="Processing files"):
+            output_file = output_dir / f"results_{input_file.name}"
+            try:
+                await process_file(
+                    agent, 
+                    input_file, 
+                    output_file, 
+                    long_fewshotcot_pt_2label,
+                    batch_size=args.batch_size
+                )
+            except Exception as e:
+                print(f"Error processing file {input_file.name}: {str(e)}")
+                continue
+
+    ## async process all files 
+    asyncio.run(process_all_files())
 
 # %%
