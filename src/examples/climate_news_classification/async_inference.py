@@ -97,6 +97,8 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=128, help='Number of rows to process in parallel (default: 128)')
     parser.add_argument('--test-run', action='store_true', help='Run on a small subset of files for testing')
     parser.add_argument('--port', type=int, default=8800, help='Port for the vLLM server (default: 8800)')
+    parser.add_argument('--start-idx', type=int, help='Starting index of files to process (inclusive)')
+    parser.add_argument('--end-idx', type=int, help='Ending index of files to process (exclusive)')
     args = parser.parse_args()
     
     agent = AsyncBSAgent(
@@ -104,6 +106,7 @@ if __name__ == "__main__":
         base_url=f'http://localhost:{args.port}/v1',
         api_key='abc'
     )
+
     # Define input and output directories
     data_dir = Path('/ephemeral/home/xiong/data/Fund/Climate')
     input_dir = data_dir / 'infer_res_2label'
@@ -118,6 +121,26 @@ if __name__ == "__main__":
     input_files = [f for f in input_files if not (f.name.startswith('results_') or f.name.startswith('.'))]
     existing_outputs = {f.name.replace('results_', '') for f in output_dir.glob('*.csv')}
     input_files = [f for f in input_files if f.name not in existing_outputs]
+    
+    # Apply file range filtering if specified
+    if args.start_idx is not None or args.end_idx is not None:
+        total_files = len(input_files)
+        start_idx = args.start_idx if args.start_idx is not None else 0
+        end_idx = args.end_idx if args.end_idx is not None else total_files
+        
+        # Ensure indices are within valid range
+        start_idx = max(0, min(start_idx, total_files))
+        end_idx = max(0, min(end_idx, total_files))
+        
+        if start_idx >= end_idx:
+            print("Warning: start_idx is greater than or equal to end_idx. No files will be processed.")
+            input_files = []
+        else:
+            input_files = input_files[start_idx:end_idx]
+            print(f"Processing files from index {start_idx} to {end_idx} (total files: {total_files})")
+    else:
+        print(f"Processing all files (total: {len(input_files)})")
+    
     print(f"Found {len(input_files)} files to process")
 
     async def process_all_files():
