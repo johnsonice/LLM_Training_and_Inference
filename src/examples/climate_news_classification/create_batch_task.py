@@ -24,7 +24,7 @@ def get_batch_files(batch_dir: Path, output_dir: Path, test_run: bool = False,
 
     # Filter out already processed files
     existing_outputs = {f.name.replace('results_', '') for f in output_dir.glob('*.jsonl')}
-    batch_files = [f for f in batch_files if f.stem.replace('batch_tasks_', '') + '.jsonl' not in existing_outputs]
+    batch_files = [f for f in batch_files if f.stem + '.jsonl' not in existing_outputs]
     
     # Apply file range filtering if specified
     if start_idx is not None or end_idx is not None:
