@@ -13,7 +13,7 @@ short_cot_pt = {
         ```json
         {
         "justification": "<brief reason>"
-        "classification": "<favorable | unfavorable | neutral>",
+        "classification": "<favorable | unfavorable | neutral>"
         }""",
     'user':
         """ Please classify the following paragraph: {PARAGRAPH} """
@@ -32,7 +32,7 @@ long_cot_pt = {
         ```json
         {
         "justification": "<brief reason>"
-        "classification": "<favorable | unfavorable | neutral>",
+        "classification": "<favorable | unfavorable | neutral>"
         }""",
     'user':
         """ Please Read carefully andclassify the following paragraph.
@@ -80,7 +80,7 @@ long_cot_pt_2label = {
         ```json
         {
         "justification": "<brief reason>"
-        "classification": "<favorable | unfavorable>",
+        "classification": "<favorable | unfavorable>"
         }```
         """,
     'user':
@@ -130,11 +130,11 @@ long_fewshotcot_pt_2label = {
         }```
         ----
         
-        **Return the response in valid JSON** with the following structure:**
+        Please respond in clean json format as follow and your output should include only this dictionary, with no additional commentary.
         ```json
         {
         "justification": "<brief reason>"
-        "classification": "<favorable | unfavorable>",
+        "classification": "<favorable | unfavorable>"
         }```
         """,
     'user':
@@ -152,5 +152,33 @@ long_fewshotcot_pt_2label = {
         2. Any statement complains about current situation, delay of climate policy action, or stating the current situation is bad. We put them as negative. 
         3. Focus on identifying the underlying viewpoint regarding climate-related actions or policies, especially from an economic standpoint.
         4. If you think the paragraph is neutral, please put it as favorable.
+        
+        Please respond in clean json format, it should include only this dictionary, with no additional commentary.
+        """
+    }
+
+output_fixing_pt = {
+    'System':
+        """You are an intelligent assistant specialized in formatting text. 
+        Your task is to take raw LLM output and format it according to user-provided instructions. 
+        Follow the specific formatting guidelines given and ensure the final output is clean, readable, 
+        and adheres to the specified style.
+        """,
+    'Human':
+        """Here is the raw LLM output:
+        ----------------
+        ----------------
+        {LLM_OUTPUT}
+        ----------------
+        ----------------
+
+        You are supposed to extract appropriate information for justification and classification.
+        Please respond in clean json format as follow and your output should include only this dictionary, with no additional commentary.
+        ```json
+        {
+        "justification": "<brief reason>"
+        "classification": "<favorable | unfavorable>"
+        }```
+        Response:
         """
     }

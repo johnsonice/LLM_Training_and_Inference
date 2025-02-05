@@ -243,7 +243,7 @@ class AsyncBSAgent: # AsyncBaseAgent
             return response.choices[0].message.content
 
     @staticmethod
-    def extract_json_string(text: str) -> str:
+    async def extract_json_string(text: str) -> str:
         """Extract JSON string from between ```json``` markers."""
         match = re.search(r'```json\s+(.*?)\s+```', text, re.DOTALL)
         if match:
@@ -251,9 +251,19 @@ class AsyncBSAgent: # AsyncBaseAgent
         else:
             return text.replace("```json", "").replace("```", "").strip()
 
-    def parse_load_json_str(self, js: str) -> Dict:
+    async def parse_load_json_str(self, js: str) -> Dict:
         """Parse JSON string from response."""
-        return json.loads(self.extract_json_string(js))
+        return json.loads(await self.extract_json_string(js))
+    
+    async def connection_test(self):
+        """Test the connection to the API."""
+        test_prompt = {
+            "system": "You are a helpful assistant.",
+            "user": "test connection"
+        }
+        res = await self.get_response_content(prompt_template=test_prompt)
+        print(res)
+        return res
     
 async def async_unit_test_structured_output():
     """Async version of the structured output test.""" 

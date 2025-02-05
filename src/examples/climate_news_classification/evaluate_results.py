@@ -42,7 +42,7 @@ def generate_summary(analyses):
 def main():
     parser = argparse.ArgumentParser(description='Evaluate LLM classification results')
     parser.add_argument('--results-dir', type=str, 
-                       default='/ephemeral/home/xiong/data/Fund/Climate/infer_res_2label_llama')
+                       default='/ephemeral/home/xiong/data/Fund/Climate/batch_tasks_results_v1_no_formated_output')
     parser.add_argument('--error-threshold', type=float, default=0.01)
     args = parser.parse_args()
     

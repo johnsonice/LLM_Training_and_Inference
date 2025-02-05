@@ -19,13 +19,13 @@ def get_batch_files(batch_dir: Path, output_dir: Path, test_run: bool = False,
     """Get list of batch files to process"""
     # Get batch files
     batch_files = list(batch_dir.glob('batch_tasks_*.jsonl'))
-    if test_run:
-        batch_files = batch_files[:5]
-
     # Filter out already processed files
     existing_outputs = {f.name.replace('results_', '') for f in output_dir.glob('*.jsonl')}
     batch_files = [f for f in batch_files if f.stem + '.jsonl' not in existing_outputs]
     
+    if test_run:
+        batch_files = batch_files[:5]
+        
     # Apply file range filtering if specified
     if start_idx is not None or end_idx is not None:
         total_files = len(batch_files)
@@ -92,8 +92,8 @@ def main(args):
     
     # Define directories
     data_dir = Path('/ephemeral/home/xiong/data/Fund/Climate')
-    batch_dir = data_dir / 'batch_tasks'
-    output_dir = data_dir / 'batch_tasks_results'
+    batch_dir = data_dir / 'batch_tasks'#_formated_output'
+    output_dir = data_dir / 'batch_tasks_results_v1_no_formated_output'
     output_dir.mkdir(exist_ok=True)
     
     # Get batch files to process

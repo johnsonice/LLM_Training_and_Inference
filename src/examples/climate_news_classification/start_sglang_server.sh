@@ -2,10 +2,10 @@
 
 # Fixed values for server configuration
 MODEL_PATH="/ephemeral/home/xiong/data/hf_cache/llama-3.1-8B-Instruct"
-PORT=8800
+PORT=8100
 API_KEY="abc"
 SERVED_MODEL_NAME="llama-3.1-8b-Instruct"
-GPU_DEVICE="4,5,6,7"
+GPU_DEVICE="0,1,2,3"
 DP_SIZE=4
 
 # GPU_DEVICE="0"

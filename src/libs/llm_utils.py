@@ -259,6 +259,17 @@ class BSAgent:
     def parse_load_json_str(self, js: str) -> Dict:
         """Parse JSON string from response."""
         return json.loads(self.extract_json_string(js))
+    
+    def connection_test(self):
+        """Test the connection to the API."""
+        test_prompt = {
+            "system": "You are a helpful assistant.",
+            "user": "What is the capital of France?"
+        }
+        
+        res = self.get_response_content(prompt_template=test_prompt)
+        print(res)
+        return res
 
 class BSAgentLegacy(BSAgent):
     """Legacy version of BSAgent for compatibility."""
