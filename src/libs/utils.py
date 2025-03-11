@@ -9,7 +9,7 @@ load_dotenv(dotenv_path=env_path)
 
 #%%
 
-def donload_hf_model(REPO_ID, save_location, hf_token=None):
+def download_hf_model(REPO_ID, save_location, hf_token=None):
     # REPO_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
     # save_location = '/root/data/hf_cache/llama-3-8B-Instruct'
     if hf_token is None:

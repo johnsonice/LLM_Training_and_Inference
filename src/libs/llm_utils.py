@@ -48,6 +48,7 @@ logging.basicConfig(
 # Constants
 DEFAULT_MODEL = "gpt-4o"
 DEFAULT_TEMPERATURE = 0
+SEED = 42
 TOKENIZER = tiktoken.encoding_for_model("gpt-4")
 
 # Response format options
@@ -126,6 +127,7 @@ class BSAgent:
         base_url: Optional[str] = None,
         model: str = DEFAULT_MODEL,
         temperature: float = DEFAULT_TEMPERATURE,
+        seed: int = SEED,
         response_format: Optional[Union[str, type[BaseModel]]] = None
     ):
         """
@@ -146,6 +148,7 @@ class BSAgent:
         self.temperature = temperature
         self.response_format = response_format
         self.message_history: List[Dict[str, str]] = []
+        self.seed = seed
 
     @retry_openai_api()
     def _get_api_response(
@@ -154,14 +157,18 @@ class BSAgent:
         conv_history: List[Dict[str, str]],
         temperature: float,
         stream: bool = False,
-        response_format: Optional[Union[str, type[BaseModel]]] = None
+        seed: int = SEED,
+        response_format: Optional[Union[str, type[BaseModel]]] = None,
+        **kwargs
     ) -> Any:
         """Make an API call to OpenAI."""
-        kwargs = {
+        allkwargs = {
             "model": model,
             "messages": conv_history,
             "temperature": temperature,
-            "stream": stream
+            "stream": stream,
+            "seed": seed,
+            **kwargs
         }
         
         # Set response format if specified
@@ -178,11 +185,13 @@ class BSAgent:
         prompt_template: Union[Dict[str, str], List[Dict[str, str]]],
         model: Optional[str] = None,
         temperature: Optional[float] = None,
+        seed: Optional[int] = None,
         conv_history: List[Dict[str, str]] = None,
         return_cost: bool = False,
         verbose: bool = True,
         stream: bool = False,
-        response_format: Optional[Union[str, type[BaseModel]]] = None
+        response_format: Optional[Union[str, type[BaseModel]]] = None,
+        **kwargs
     ) -> Union[Any, Tuple[Any, float]]:
         """
         Get a completion from the API.
@@ -203,6 +212,7 @@ class BSAgent:
         """
         model = model or self.model
         temperature = temperature if temperature is not None else self.temperature
+        seed = seed if seed is not None else self.seed
         conv_history = list(conv_history or [])
 
         messages = []
@@ -227,7 +237,9 @@ class BSAgent:
             conv_history, 
             temperature, 
             stream, 
-            response_format
+            seed,
+            response_format,
+            **kwargs
         )
 
         if not stream:
@@ -260,16 +272,17 @@ class BSAgent:
         """Parse JSON string from response."""
         return json.loads(self.extract_json_string(js))
     
-    def connection_test(self):
+    def connection_test(self,user_prompt=None):
         """Test the connection to the API."""
+        if user_prompt is None:
+            user_prompt = "What is the capital of France?"
         test_prompt = {
             "system": "You are a helpful assistant.",
-            "user": "What is the capital of France?"
+            "user": user_prompt
         }
-        
         res = self.get_response_content(prompt_template=test_prompt)
         print(res)
-        return res
+        #return res
 
 class BSAgentLegacy(BSAgent):
     """Legacy version of BSAgent for compatibility."""

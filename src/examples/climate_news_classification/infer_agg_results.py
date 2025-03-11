@@ -87,7 +87,7 @@ if __name__ == "__main__":
     #%%
     for version in tqdm(versions):
         print('working on version : {}'.format(version))
-        out_agg_dir = out_agg_dir / 'final_agg_2label_{}.csv'.format(version)
+        out_agg_path = out_agg_dir / 'final_agg_2label_{}.csv'.format(version)
         ## agg columns 
         agg_res_dfs = []
         group_cols = ['ym',version,'harmonized_classification'] # 'climate_binary' #'climate_binary_org' # 'climate_binary_no_adaptation','climate_policy_tag_no_adaptation'
@@ -116,7 +116,6 @@ if __name__ == "__main__":
             agg_df = agg_by(df,group_cols,value_dict)  ## aggregate on smaller chunks are quicker 
             agg_res_dfs.append(agg_df)
         
-        #%%
         final_agg_df = pd.concat(agg_res_dfs)
         final_agg_df = final_agg_df.groupby(group_cols)['harmonized_classification_count'].sum()
         #label_map = {0:'neutral',1:'positive',2:'negative'}
@@ -127,5 +126,5 @@ if __name__ == "__main__":
         #final_agg_df['label'].replace(label_map,inplace=True)
         final_agg_df.rename(columns={'harmonized_classification': 'label', 'harmonized_classification_count': 'label_count'}, 
                             inplace=True)
-        final_agg_df.to_csv(out_agg_dir,encoding='utf8',index=False)
-        print('save results to {}'.format(out_agg_dir))
+        final_agg_df.to_csv(out_agg_path,encoding='utf8',index=False)
+        print('save results to {}'.format(out_agg_path))
