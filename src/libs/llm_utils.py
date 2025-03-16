@@ -30,6 +30,8 @@ from tenacity import (
 #from utils import load_json, logging, exception_handler
 import logging 
 import datetime 
+from google.generativeai.types import BlockedPromptException
+from google.api_core.exceptions import ResourceExhausted
 now = datetime.datetime.now()
 name = os.getlogin()
 USER = name.upper()
@@ -101,8 +103,8 @@ def get_oai_fees(model_name: str, prompt_tokens: int, completion_tokens: int) ->
         return -1
 
 def retry_openai_api(
-    wait_exponential_multiplier: int = 1,
-    wait_exponential_max: int = 60,
+    wait_exponential_multiplier: int = 2,
+    wait_exponential_max: int = 90,
     max_attempts: int = 3
 ):
     """Retry decorator for OpenAI API calls with exponential backoff."""
@@ -114,7 +116,8 @@ def retry_openai_api(
             retry_if_exception_type(APIError) |
             retry_if_exception_type(RateLimitError) |
             retry_if_exception_type(APIConnectionError) |
-            retry_if_exception_type(InternalServerError)
+            retry_if_exception_type(InternalServerError) |
+            retry_if_exception_type(ResourceExhausted)
         )
     )
 
@@ -157,35 +160,33 @@ class BSAgent:
         conv_history: List[Dict[str, str]],
         temperature: float,
         stream: bool = False,
-        seed: int = SEED,
         response_format: Optional[Union[str, type[BaseModel]]] = None,
         **kwargs
     ) -> Any:
         """Make an API call to OpenAI."""
+  
         allkwargs = {
             "model": model,
             "messages": conv_history,
             "temperature": temperature,
             "stream": stream,
-            "seed": seed,
             **kwargs
         }
-        
+            
         # Set response format if specified
         r_format = response_format or self.response_format
         if r_format:
-            kwargs["response_format"] = r_format
-            kwargs.pop("stream") ## parse doesn't support stream
-            return self.client.beta.chat.completions.parse(**kwargs)
+            allkwargs["response_format"] = r_format
+            allkwargs.pop("stream") ## parse doesn't support stream
+            return self.client.beta.chat.completions.parse(**allkwargs)
         else:
-            return self.client.chat.completions.create(**kwargs)
+            return self.client.chat.completions.create(**allkwargs)
 
     def get_completion(
         self,
         prompt_template: Union[Dict[str, str], List[Dict[str, str]]],
         model: Optional[str] = None,
         temperature: Optional[float] = None,
-        seed: Optional[int] = None,
         conv_history: List[Dict[str, str]] = None,
         return_cost: bool = False,
         verbose: bool = True,
@@ -212,7 +213,6 @@ class BSAgent:
         """
         model = model or self.model
         temperature = temperature if temperature is not None else self.temperature
-        seed = seed if seed is not None else self.seed
         conv_history = list(conv_history or [])
 
         messages = []
@@ -221,6 +221,9 @@ class BSAgent:
             if "System" in prompt_template or "system" in prompt_template:
                 system_content = prompt_template.get("System") or prompt_template.get("system")
                 messages.append({"role": "system", "content": system_content})
+            if "developer" in prompt_template:
+                system_content = prompt_template.get("developer")
+                messages.append({"role": "developer", "content": system_content})
             if "Human" in prompt_template or "user" in prompt_template:
                 user_content = prompt_template.get("Human") or prompt_template.get("user")
                 messages.append({"role": "user", "content": user_content})
@@ -232,12 +235,13 @@ class BSAgent:
             messages = prompt_template
 
         conv_history.extend(messages)
+        
+        # Pass seed from kwargs if provided, otherwise it will use the instance seed
         response = self._get_api_response(
             model, 
             conv_history, 
             temperature, 
-            stream, 
-            seed,
+            stream,
             response_format,
             **kwargs
         )
@@ -272,41 +276,17 @@ class BSAgent:
         """Parse JSON string from response."""
         return json.loads(self.extract_json_string(js))
     
-    def connection_test(self,user_prompt=None):
+    def connection_test(self,user_prompt=None,**kwargs):
         """Test the connection to the API."""
         if user_prompt is None:
             user_prompt = "What is the capital of France?"
         test_prompt = {
-            "system": "You are a helpful assistant.",
+            "developer" if self.model.startswith("o") else "system": "You are a helpful assistant.",
             "user": user_prompt
         }
-        res = self.get_response_content(prompt_template=test_prompt)
+        res = self.get_response_content(prompt_template=test_prompt,**kwargs)
         print(res)
         #return res
-
-class BSAgentLegacy(BSAgent):
-    """Legacy version of BSAgent for compatibility."""
-    
-    def _get_api_response(self, model: str, conv_history: List[Dict[str, str]], 
-                         temperature: float, stream: bool) -> Any:
-        """Legacy API response method."""
-        import openai  # Legacy import
-        return openai.ChatCompletion.create(
-            model=model,
-            messages=conv_history,
-            temperature=temperature
-        )
-
-    def get_response_content(self, **kwargs) -> str:
-        """Legacy method to get response content."""
-        response = self.get_completion(**kwargs)
-        return response.choices[0].message["content"]
-
-    @staticmethod
-    def parse_load_json_str(js: str) -> Dict:
-        """Legacy method to parse JSON string."""
-        return json.loads(js.replace("```json", "").replace("```", ""))
-    
     
 def unit_test_structured_output():
     

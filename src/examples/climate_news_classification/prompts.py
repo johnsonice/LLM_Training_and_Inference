@@ -14,7 +14,7 @@ short_cot_pt = {
         {
         "justification": "<brief reason>"
         "classification": "<favorable | unfavorable | neutral>"
-        }""",
+        }```""",
     'user':
         """ Please classify the following paragraph: {PARAGRAPH} """
     }
@@ -33,7 +33,7 @@ long_cot_pt = {
         {
         "justification": "<brief reason>"
         "classification": "<favorable | unfavorable | neutral>"
-        }""",
+        }```""",
     'user':
         """ Please Read carefully andclassify the following paragraph.
         Here is the paragraph: 
@@ -65,7 +65,7 @@ short_cot_pt_2label = {
         {
         "justification": "<brief reason>"
         "classification": "<favorable | unfavorable>",
-        }""",
+        }```""",
     'user':
         """ Please classify the following paragraph: {PARAGRAPH} """
     }
